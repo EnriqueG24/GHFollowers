@@ -54,7 +54,7 @@ class FollowerListVC: UIViewController {
             switch result {
             case .success(let followers):
                 if followers.count < 100 { strongSelf.hasMoreFollowers = false }
-                strongSelf.followers.append(contentsOf: followers)x 
+                strongSelf.followers.append(contentsOf: followers)
                 strongSelf.updateData()
             case .failure(let error):
                 strongSelf.presentGFAlertOnMainThread(title: "Bad stuff happened", message: error.rawValue, buttonTitle: "Ok")
