@@ -5,11 +5,12 @@
 //  Created by Enrique Gongora on 3/21/25.
 //
 
-import Foundation
+import UIKit
 
 class NetworkManager {
     static let shared = NetworkManager()
-    let baseURL = "https://api.github.com/users/"
+    private let baseURL = "https://api.github.com/users/"
+    let cache = NSCache<NSString, UIImage>()
     
     /// This ensure there can only be on instance of it
     private init() {}
