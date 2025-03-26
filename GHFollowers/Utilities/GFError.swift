@@ -1,11 +1,11 @@
 //
-//  ErrorMessage.swift
+//  GFError.swift
 //  GHFollowers
 //
-//  Created by Enrique Gongora on 3/21/25.
+//  Created by Enrique Gongora on 3/26/25.
 //
 
-import Foundation
+import UIKit
 
 enum GFError: String, Error {
     case invalidUsername = "This username created an invalid request. Please try again."
