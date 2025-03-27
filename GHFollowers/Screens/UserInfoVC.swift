@@ -12,6 +12,7 @@ class UserInfoVC: UIViewController {
     let headerView = UIView()
     let itemViewOne = UIView()
     let itemViewTwo = UIView()
+    let dateLabel = GFBodyLabel(textAlignment: .center)
     var itemViews: [UIView] = []
     
     var userName: String!
@@ -32,6 +33,7 @@ class UserInfoVC: UIViewController {
                     strongSelf.add(childVC: GFUserInfoHeaderVC(user: user), to: strongSelf.headerView)
                     strongSelf.add(childVC: GFRepoItemVC(user: user), to: strongSelf.itemViewOne)
                     strongSelf.add(childVC: GFFollowerItemVC(user: user), to: strongSelf.itemViewTwo)
+                    strongSelf.dateLabel.text = "GitHub since " + user.createdAt.convertToDisplayFormat()
                 }
             case .failure(let error):
                 self?.presentGFAlertOnMainThread(title: "Something went wrong", message: error.rawValue, buttonTitle: "Ok")
@@ -49,7 +51,7 @@ class UserInfoVC: UIViewController {
         let padding: CGFloat = 20
         let itemHeight: CGFloat = 140
         
-        itemViews = [headerView, itemViewOne, itemViewTwo]
+        itemViews = [headerView, itemViewOne, itemViewTwo, dateLabel]
         
         for itemView in itemViews {
             view.addSubview(itemView)
@@ -70,6 +72,9 @@ class UserInfoVC: UIViewController {
             
             itemViewTwo.topAnchor.constraint(equalTo: itemViewOne.bottomAnchor, constant: padding),
             itemViewTwo.heightAnchor.constraint(equalToConstant: itemHeight),
+            
+            dateLabel.topAnchor.constraint(equalTo: itemViewTwo.bottomAnchor, constant: padding),
+            dateLabel.heightAnchor.constraint(equalToConstant: 18)
         ])
     }
     
