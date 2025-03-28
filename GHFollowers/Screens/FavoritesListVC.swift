@@ -73,4 +73,13 @@ extension FavoritesListVC: UITableViewDelegate, UITableViewDataSource {
         cell.set(favorite: favorite)
         return cell 
     }
-}   
+    
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        let favorite = favorites[indexPath.row]
+        let destinationVC = FollowerListVC()
+        destinationVC.username = favorite.login
+        destinationVC.title = favorite.login
+        
+        navigationController?.pushViewController(destinationVC, animated: true)
+    }
+}
