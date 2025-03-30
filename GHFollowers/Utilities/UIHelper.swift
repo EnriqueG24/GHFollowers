@@ -7,7 +7,7 @@
 
 import UIKit
 
-struct UIHelper {
+enum UIHelper {
     
     /// Creates a `UICollectionViewFlowLayout` configured for a three-column grid layout.
     ///
