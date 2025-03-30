@@ -95,7 +95,7 @@ class FollowerListVC: GFDataLoadingVC {
                     }
                 }
                 
-                strongSelf.updateData(on: followers)
+                strongSelf.updateData(on: strongSelf.isSearching ? strongSelf.filteredFollowers : strongSelf.followers)
             case .failure(let error):
                 strongSelf.presentGFAlertOnMainThread(title: "Bad stuff happened", message: error.rawValue, buttonTitle: "Ok")
             }
