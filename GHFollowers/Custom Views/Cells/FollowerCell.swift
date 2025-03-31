@@ -8,10 +8,19 @@
 import UIKit
 
 class FollowerCell: UICollectionViewCell {
+    
+    /// The reuse identifier for table view cell registration.
     static let reuseID = "FollowerCell"
     
+    // MARK: - UI Components
+    
+    /// The avatar image view displaying the user's GitHub profile picture.
     let avatarImageView = GFAvatarImageView(frame: .zero)
+    
+    /// The label displaying the GitHub username.
     let usernameLabel = GFTitleLabel(textAlignment: .center, fontSize: 16)
+    
+    // MARK: - Initialization
     
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -20,14 +29,6 @@ class FollowerCell: UICollectionViewCell {
     
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
-    }
-    
-    func set(follower: Follower) {
-        usernameLabel.text = follower.login
-        NetworkManager.shared.downloadImage(from: follower.avatarUrl) { [weak self] image in
-            guard let strongSelf = self else { return }
-            DispatchQueue.main.async { strongSelf.avatarImageView.image = image }
-        }
     }
     
     private func configure() {
@@ -46,5 +47,24 @@ class FollowerCell: UICollectionViewCell {
             usernameLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -padding),
             usernameLabel.heightAnchor.constraint(equalToConstant: 20)
         ])
+    }
+    
+    // MARK: - Data Population
+    
+    /// Updates the cell's UI with the provided follower data.
+    /// - Parameter favorite: The `Follower` model containing user data to display.
+    func set(follower: Follower) {
+        usernameLabel.text = follower.login
+        downloadAvatarImage(from: follower.avatarUrl)
+    }
+    
+    /// Downloads and sets the avatar image from the given URL.
+    /// - Parameter urlString: The URL string for the avatar image.
+    private func downloadAvatarImage(from urlString: String) {
+        NetworkManager.shared.downloadImage(from: urlString) { [weak self] image in
+            DispatchQueue.main.async {
+                self?.avatarImageView.image = image
+            }
+        }
     }
 }
