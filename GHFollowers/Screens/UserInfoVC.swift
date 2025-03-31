@@ -7,12 +7,18 @@
 
 import UIKit
 
+/// A delegate protocol for handling follower requests from the UserInfoVC
 protocol UserInfoVCDelegate: AnyObject {
+    
+    /// Notifies the delegate that followers were requested for a specific username
+    /// - Parameter username: The GitHub username to fetch followers for
     func didRequestFollowers(for username: String)
 }
 
 class UserInfoVC: UIViewController {
-
+    
+    // MARK: - UI Properties
+    
     let scrollView = UIScrollView()
     let contentView = UIView()
     
@@ -22,8 +28,11 @@ class UserInfoVC: UIViewController {
     let dateLabel = GFBodyLabel(textAlignment: .center)
     var itemViews: [UIView] = []
     
+    // MARK: - Properties
     var userName: String!
     weak var delegate: UserInfoVCDelegate!
+    
+    // MARK: - View Lifecycle
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -46,14 +55,19 @@ class UserInfoVC: UIViewController {
         }
     }
     
-    func configureUIElements(with user: User) {
+    // MARK: - Configuration
+    
+    /// Configures all UI elements with the user data
+    /// - Parameter user: The User model containing the data to display
+    private func configureUIElements(with user: User) {
         add(childVC: GFUserInfoHeaderVC(user: user), to: headerView)
         add(childVC: GFRepoItemVC(user: user, delegate: self), to: itemViewOne)
         add(childVC: GFFollowerItemVC(user: user, delegate: self), to: itemViewTwo)
         dateLabel.text = "GitHub since \(user.createdAt.convertToMonthYearFormat())"
     }
     
-    func configureScrollView() {
+    /// Configures the scroll view and its content view
+    private func configureScrollView() {
         view.addSubview(scrollView)
         scrollView.addSubview(contentView)
         
@@ -66,12 +80,16 @@ class UserInfoVC: UIViewController {
         ])
     }
     
-    func configureViewController() {
+    /// Configures the basic view controller settings
+    private func configureViewController() {
         view.backgroundColor = .systemBackground
-        let doneButton = UIBarButtonItem(barButtonSystemItem: .done, target: self, action: #selector(dimissVC))
-        navigationItem.rightBarButtonItem = doneButton
+        navigationItem.rightBarButtonItem = UIBarButtonItem(
+            barButtonSystemItem: .done,
+            target: self,
+            action: #selector(dismissVC))
     }
     
+    /// Lays out all the UI elements in the content view
     func layoutUI() {
         let padding: CGFloat = 20
         let itemHeight: CGFloat = 140
@@ -103,22 +121,34 @@ class UserInfoVC: UIViewController {
         ])
     }
     
-    func add(childVC: UIViewController, to containerView: UIView) {
+    // MARK: - Helper Methods
+    
+    /// Adds a child view controller to a container view
+    /// - Parameters:
+    ///   - childVC: The child view controller to add
+    ///   - containerView: The container view that will host the child's view
+    private func add(childVC: UIViewController, to containerView: UIView) {
         addChild(childVC)
         containerView.addSubview(childVC.view)
         childVC.view.frame = containerView.bounds
         childVC.didMove(toParent: self)
     }
     
-    @objc func dimissVC() {
+    /// Dismisses the view controller
+    @objc private func dismissVC() {
         dismiss(animated: true)
     }
 }
 
+// MARK: - GFRepoItemVCDelegate
+
 extension UserInfoVC: GFRepoItemVCDelegate {
     func didTapGitHubProfile(for user: User) {
         guard let url = URL(string: user.htmlUrl) else {
-            presentGFAlertOnMainThread(title: "Invalid URL", message: "The url attached to this user is invalid", buttonTitle: "Ok")
+            presentGFAlertOnMainThread(
+                title: "Invalid URL",
+                message: "The url attached to this user is invalid",
+                buttonTitle: "Ok")
             return
         }
         
@@ -126,14 +156,19 @@ extension UserInfoVC: GFRepoItemVCDelegate {
     }
 }
 
+// MARK: - GFFollowerItemVCDelegate
+
 extension UserInfoVC: GFFollowerItemVCDelegate {
     func didTapGetFollowers(for user: User) {
         guard user.followers != 0 else {
-            presentGFAlertOnMainThread(title: "No followers", message: "This user has no followers. What a shame", buttonTitle: "Ok")
+            presentGFAlertOnMainThread(
+                title: "No followers",
+                message: "This user has no followers. What a shame",
+                buttonTitle: "Ok")
             return
         }
         
         delegate.didRequestFollowers(for: user.login)
-        dismiss(animated: true)
+        dismissVC()
     }
 }

@@ -7,18 +7,32 @@
 
 import UIKit
 
+/// Represents the type of information displayed in a ``GFItemInfoView``.
 enum ItemInfoType {
+    /// Displays repository count information
     case repos
+    /// Displays gist count information
     case gists
+    /// Displays follower count information
     case followers
+    /// Displays following count information
     case following
 }
 
 class GFItemInfoView: UIView {
     
-    let symbolImageView = UIImageView()
-    let titleLabel = GFTitleLabel(textAlignment: .left, fontSize: 14)
-    let countLabel = GFTitleLabel(textAlignment: .center, fontSize: 14)
+    // MARK: - UI Components
+    
+    /// The image view displaying the symbol for the information type
+    private let symbolImageView = UIImageView()
+    
+    /// The label displaying the title of the information type
+    private let titleLabel = GFTitleLabel(textAlignment: .left, fontSize: 14)
+    
+    /// The label displaying the count/number for the information type
+    private let countLabel = GFTitleLabel(textAlignment: .center, fontSize: 14)
+    
+    // MARK: - Initialization
     
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -28,6 +42,8 @@ class GFItemInfoView: UIView {
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
+    
+    // MARK: - Configuration
     
     private func configure() {
         addSubviews(symbolImageView, titleLabel, countLabel)
@@ -54,6 +70,12 @@ class GFItemInfoView: UIView {
         ])
     }
     
+    // MARK: - Public Interface
+    
+    /// Sets the content of the view for a specific information type
+    /// - Parameters:
+    ///   - itemInfoType: The type of information to display
+    ///   - count: The numeric value to display
     func set(itemInfoType: ItemInfoType, withCount count: Int) {
         switch itemInfoType {
         case .repos:
@@ -70,6 +92,6 @@ class GFItemInfoView: UIView {
             titleLabel.text = "Following"
         }
         
-        countLabel.text = String(count)
+        countLabel.text = count.formatted()
     }
 }

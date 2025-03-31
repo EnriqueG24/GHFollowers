@@ -32,6 +32,7 @@ class FavoritesListVC: GFDataLoadingVC {
 
     func configureTableView() {
         view.addSubview(tableView)
+        
         tableView.frame = view.bounds
         tableView.rowHeight = 80
         tableView.delegate = self
@@ -40,24 +41,40 @@ class FavoritesListVC: GFDataLoadingVC {
         tableView.register(FavoriteCell.self, forCellReuseIdentifier: FavoriteCell.reuseID)
     }
     
+    /// Retrieves and displays favorite followers from persistent storage
+    /// - Note: Updates UI to show either favorites list or empty state view based on results
     func getFavorites() {
-        PersistenceManager.retrieveFavorites { [weak self] result in
-            guard let strongSelf = self else { return }
-            switch result {
-            case .success(let favorites):
-                if favorites.isEmpty { 
-                    strongSelf.showEmptyStateView(with: "No Favorites?\nAdd one on the follower screen.", in: strongSelf.view)
-                } else {
-                    strongSelf.favorites = favorites
-                    DispatchQueue.main.async {
-                        strongSelf.tableView.reloadData()
-                        strongSelf.view.bringSubviewToFront(strongSelf.tableView)
-                    }
-                }
-            case .failure(let error):
-                strongSelf.presentGFAlertOnMainThread(title: "Something went wrong", message: error.rawValue, buttonTitle: "Ok")
-            }
-        }   
+       PersistenceManager.retrieveFavorites { [weak self] result in
+           guard let strongSelf = self else { return }
+           
+           switch result {
+           case .success(let favorites):
+               strongSelf.handleRetrievedFavorites(favorites)
+           case .failure(let error):
+               strongSelf.presentGFAlertOnMainThread(
+                   title: "Something went wrong",
+                   message: error.rawValue,
+                   buttonTitle: "Ok"
+               )
+           }
+       }
+    }
+
+    /// Processes retrieved favorites and updates UI accordingly
+    /// - Parameter favorites: The array of favorite followers retrieved from persistence
+    private func handleRetrievedFavorites(_ favorites: [Follower]) {
+       if favorites.isEmpty {
+           showEmptyStateView(
+               with: "No Favorites?\nAdd one on the follower screen.",
+               in: self.view
+           )
+       } else {
+           self.favorites = favorites
+           DispatchQueue.main.async {
+               self.tableView.reloadData()
+               self.view.bringSubviewToFront(self.tableView)
+           }
+       }
     }
 }
 

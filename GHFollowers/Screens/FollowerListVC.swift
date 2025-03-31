@@ -72,6 +72,10 @@ class FollowerListVC: GFDataLoadingVC {
         navigationItem.searchController = searchController
     }
     
+    /// Fetches followers for a specified username with pagination support
+    /// - Parameters:
+    ///   - username: The GitHub username to fetch followers for
+    ///   - page: The page number to fetch (pagination, starts at 1)
     func getFollowers(username: String, page: Int) {
         showLoadingView()
         isLoadingMoreFollowers = true
@@ -82,24 +86,41 @@ class FollowerListVC: GFDataLoadingVC {
             
             switch result {
             case .success(let followers):
-                if followers.count < 100 { strongSelf.hasMoreFollowers = false }
-                strongSelf.followers.append(contentsOf: followers)
-                
-                if strongSelf.followers.isEmpty {
-                    let message = "This user doesn't have any followers. Go follow them 😁."
-                    DispatchQueue.main.async {
-                        strongSelf.showEmptyStateView(with: message, in: strongSelf.view)
-                        return
-                    }
-                }
-                
-                strongSelf.updateData(on: strongSelf.isSearching ? strongSelf.filteredFollowers : strongSelf.followers)
+                strongSelf.updateUI(with: followers)
             case .failure(let error):
-                strongSelf.presentGFAlertOnMainThread(title: "Bad stuff happened", message: error.rawValue, buttonTitle: "Ok")
+                strongSelf.presentGFAlertOnMainThread(
+                    title: "Bad stuff happened",
+                    message: error.rawValue,
+                    buttonTitle: "Ok"
+                )
             }
             
             strongSelf.isLoadingMoreFollowers = false
         }
+    }
+    
+    /// Processes followers data after a successful network request
+    /// - Parameter followers: Array of follower objects returned from the API
+    private func updateUI(with followers: [Follower]) {
+        // Check if we've reached the end of available data
+        if followers.count < 100 {
+            hasMoreFollowers = false
+        }
+        
+        // Add new followers to our collection
+        self.followers.append(contentsOf: followers)
+        
+        // Show empty state if there are no followers
+        if self.followers.isEmpty {
+            let message = "This user doesn't have any followers. Go follow them 😁."
+            DispatchQueue.main.async {
+                self.showEmptyStateView(with: message, in: self.view)
+                return
+            }
+        }
+        
+        // Update UI with appropriate data source
+        updateData(on: isSearching ? filteredFollowers : self.followers)
     }
     
     func configureDataSource() {
@@ -120,6 +141,8 @@ class FollowerListVC: GFDataLoadingVC {
         }
     }
     
+    /// Handles the action when the Add button is tapped
+    /// - Note: This function adds the current user to favorites by retrieving their information and storing it in the persistence layer
     @objc func addButtonTapped() {
         showLoadingView()
         
@@ -129,19 +152,37 @@ class FollowerListVC: GFDataLoadingVC {
             
             switch result {
             case .success(let user):
-                let favorite = Follower(login: user.login, avatarUrl: user.avatarUrl)
-                PersistenceManager.updateWith(favorite: favorite, actionType: .add) { [weak self] error in
-                    guard let strongSelf = self else { return }
-                    
-                    guard let error = error else {
-                        strongSelf.presentGFAlertOnMainThread(title: "Success!", message: "You have successfully favorited this user 🎉", buttonTitle: "Hooray!")
-                        return
-                    }
-                    
-                    strongSelf.presentGFAlertOnMainThread(title: "Something went wrong", message: error.rawValue, buttonTitle: "Ok")
-                }
+                strongSelf.addUserToFavorites(user)
             case .failure(let error):
-                strongSelf.presentGFAlertOnMainThread(title: "Something went wrong", message: error.rawValue, buttonTitle: "Ok")
+                strongSelf.presentGFAlertOnMainThread(
+                    title: "Something went wrong",
+                    message: error.rawValue,
+                    buttonTitle: "Ok"
+                )
+            }
+        }
+    }
+    
+    /// Adds a user to favorites using the PersistenceManager
+    /// - Parameter user: The user to be added to favorites
+    private func addUserToFavorites(_ user: User) {
+        let favorite = Follower(login: user.login, avatarUrl: user.avatarUrl)
+        
+        PersistenceManager.updateWith(favorite: favorite, actionType: .add) { [weak self] error in
+            guard let self else { return }
+            
+            if let error = error {
+                self.presentGFAlertOnMainThread(
+                    title: "Something went wrong",
+                    message: error.rawValue,
+                    buttonTitle: "Ok"
+                )
+            } else {
+                self.presentGFAlertOnMainThread(
+                    title: "Success!",
+                    message: "You have successfully favorited this user 🎉",
+                    buttonTitle: "Hooray!"
+                )
             }
         }
     }
@@ -192,10 +233,10 @@ extension FollowerListVC: UISearchResultsUpdating {
 
 extension FollowerListVC: UserInfoVCDelegate {
     func didRequestFollowers(for username: String) {
-        // Get followers from our user
         self.username = username
         title = username
         page = 1
+        
         followers.removeAll()
         filteredFollowers.removeAll()
         updateData(on: followers)

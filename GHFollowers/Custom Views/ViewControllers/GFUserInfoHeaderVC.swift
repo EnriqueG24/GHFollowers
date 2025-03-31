@@ -31,7 +31,7 @@ class GFUserInfoHeaderVC: UIViewController {
         super.viewDidLoad()
         addSubviews()
         layoutUI()
-        downloadAvatarImage()
+        avatarImageView.downloadImage(fromURL: user.avatarUrl)
         configureUIElements()
     }
     
@@ -86,12 +86,5 @@ class GFUserInfoHeaderVC: UIViewController {
             bioLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             bioLabel.heightAnchor.constraint(equalToConstant: 60)
         ])
-    }
-    
-    func downloadAvatarImage() {
-        NetworkManager.shared.downloadImage(from: user.avatarUrl) { [weak self] image in
-            guard let strongSelf = self else { return }
-            DispatchQueue.main.async { strongSelf.avatarImageView.image = image }
-        }
     }
 }

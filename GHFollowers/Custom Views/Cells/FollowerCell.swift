@@ -55,16 +55,6 @@ class FollowerCell: UICollectionViewCell {
     /// - Parameter favorite: The `Follower` model containing user data to display.
     func set(follower: Follower) {
         usernameLabel.text = follower.login
-        downloadAvatarImage(from: follower.avatarUrl)
-    }
-    
-    /// Downloads and sets the avatar image from the given URL.
-    /// - Parameter urlString: The URL string for the avatar image.
-    private func downloadAvatarImage(from urlString: String) {
-        NetworkManager.shared.downloadImage(from: urlString) { [weak self] image in
-            DispatchQueue.main.async {
-                self?.avatarImageView.image = image
-            }
-        }
+        avatarImageView.downloadImage(fromURL: follower.avatarUrl)
     }
 }
