@@ -21,7 +21,7 @@ class GFAlertVC: UIViewController {
     let messageLabel = GFBodyLabel(textAlignment: .center)
     
     /// The primary action button at the bottom of the alert
-    let actionButton = GFButton(backgroundColor: .systemPink, title: "Ok")
+    let actionButton = GFButton(color: .systemPink, title: "Ok", systemImageName: "checkmark.circle")
     
     // MARK: - Properties
     

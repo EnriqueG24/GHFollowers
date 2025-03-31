@@ -18,7 +18,7 @@ class SearchVC: UIViewController {
     private let usernameTextField = GFTextField()
     
     /// The primary action button to initiate the search
-    private let callToActionButton = GFButton(backgroundColor: .systemGreen, title: "Get Followers")
+    private let callToActionButton = GFButton(color: .systemGreen, title: "Get Followers", systemImageName: "person.3")
     
     // MARK: - Computed Properties
     
