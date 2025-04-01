@@ -6,6 +6,7 @@
 //
 
 import UIKit
+import SwiftUI
 
 class FollowerCell: UICollectionViewCell {
     
@@ -50,11 +51,20 @@ class FollowerCell: UICollectionViewCell {
     }
     
     // MARK: - Data Population
-    
-    /// Updates the cell's UI with the provided follower data.
-    /// - Parameter favorite: The `Follower` model containing user data to display.
+
+    /// Configures the cell's UI with the given follower data.
+    /// - Parameter follower: A `Follower` model containing the user's information.
+    /// - Note: On iOS 16 and later, this method uses `UIHostingConfiguration` to display `FollowerView`.
+    ///         On earlier versions, it manually sets the `usernameLabel` and loads the avatar image.
     func set(follower: Follower) {
-        usernameLabel.text = follower.login
-        avatarImageView.downloadImage(fromURL: follower.avatarUrl)
+        if #available(iOS 16.0, *) {
+            contentConfiguration = UIHostingConfiguration {
+                FollowerView(follower: follower)
+            }
+        } else {
+            usernameLabel.text = follower.login
+            avatarImageView.downloadImage(fromURL: follower.avatarUrl)
+        }
     }
+
 }
