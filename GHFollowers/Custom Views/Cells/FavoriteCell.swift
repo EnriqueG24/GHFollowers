@@ -20,6 +20,9 @@ class FavoriteCell: UITableViewCell {
     /// The label displaying the GitHub username.
     private let usernameLabel = GFTitleLabel(textAlignment: .left, fontSize: 26)
     
+    /// The URL of the avatar image currently being loaded
+    private var currentAvatarURL: String?
+    
     // MARK: - Initialization
     
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
@@ -57,6 +60,14 @@ class FavoriteCell: UITableViewCell {
     /// - Parameter favorite: The `Follower` model containing user data to display.
     func set(favorite: Follower) {
         usernameLabel.text = favorite.login
-        avatarImageView.downloadImage(fromURL: favorite.avatarUrl)
+        currentAvatarURL = favorite.avatarUrl
+        avatarImageView.image = avatarImageView.placeholderImage
+        
+        Task {
+            if let image = await NetworkManager.shared.downloadImage(from: favorite.avatarUrl),
+               currentAvatarURL == favorite.avatarUrl {
+                avatarImageView.image = image
+            }
+        }
     }
 }
