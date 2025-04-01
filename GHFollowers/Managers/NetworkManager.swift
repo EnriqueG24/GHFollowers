@@ -7,134 +7,142 @@
 
 import UIKit
 
-class NetworkManager {
-    static let shared = NetworkManager()
-    private let baseURL = "https://api.github.com/users/"
-    let cache = NSCache<NSString, UIImage>()
+/// A singleton network manager responsible for handling GitHub API requests.
+///
+/// Use `NetworkManager.shared` to access the singleton instance.
+/// The manager provides methods to fetch GitHub followers, user information, and download user avatars.
+/// It includes caching for images to optimize network usage.
+final class NetworkManager {
     
-    /// This ensure there can only be on instance of it
+    // MARK: - Shared Instance
+    
+    /// The shared singleton instance of the NetworkManager.
+    static let shared = NetworkManager()
+    
+    // MARK: - Properties
+    
+    /// The base URL for GitHub's user API endpoints.
+    private let baseURL = "https://api.github.com/users/"
+    
+    /// Cache for storing downloaded user avatars to avoid repeated network requests.
+    private let cache = NSCache<NSString, UIImage>()
+    
+    /// JSON decoder configured for GitHub's API response format.
+    private let decoder: JSONDecoder = {
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        decoder.dateDecodingStrategy = .iso8601
+        return decoder
+    }()
+    
+    // MARK: - Initialization
+    
+    /// Private initializer to enforce singleton pattern.
     private init() {}
     
-    func getFollowers(for username: String, page: Int, completed: @escaping (Result<[Follower], GFError>) -> Void) {
+    
+    // MARK: - Public Methods
+    
+    /// Fetches a list of followers for a specific GitHub user.
+    /// - Parameters:
+    ///   - username: The GitHub username to fetch followers for.
+    ///   - page: The page number of results to fetch (GitHub paginates follower lists).
+    /// - Returns: An array of ``Follower`` objects.
+    /// - Throws: A ``GFError`` if any error occurs during the network request or data parsing.
+    func getFollowers(for username: String, page: Int) async throws -> [Follower] {
         let endpoint = baseURL + "\(username)/followers?per_page=100&page=\(page)"
         
         guard let url = URL(string: endpoint) else {
-            completed(.failure(.invalidUsername))
-            return
+            throw GFError.invalidUsername
         }
         
-        let task = URLSession.shared.dataTask(with: url) { data, response, error in
-            if let _ = error {
-                completed(.failure(.unableToComplete))
-            }
-            
-            guard let response = response as? HTTPURLResponse, response.statusCode == 200 else {
-                completed(.failure(.invalidResponse))
-                return
-            }
-            
-            guard let data = data else {
-                completed(.failure(.invalidData))
-                return
-            }
-            
-            do {
-                let decoder = JSONDecoder()
-                decoder.keyDecodingStrategy = .convertFromSnakeCase
-                let followers = try decoder.decode([Follower].self, from: data)
-                completed(.success(followers))
-            } catch {
-                completed(.failure(.invalidData))
-            }
+        let (data, response) = try await URLSession.shared.data(from: url)
+        
+        guard let response = response as? HTTPURLResponse, response.statusCode == 200 else {
+            throw GFError.invalidResponse
         }
         
-        task.resume()
+        do {
+            return try decoder.decode([Follower].self, from: data)
+        } catch {
+            throw GFError.invalidData
+        }
     }
     
-    func getUserInfo(for username: String, completed: @escaping (Result<User, GFError>) -> Void) {
+    /// Fetches detailed information about a specific GitHub user.
+    /// - Parameter username: The GitHub username to fetch information for.
+    /// - Returns: A ``User`` object containing the user's details.
+    /// - Throws: A ``GFError`` if any error occurs during the network request or data parsing.
+    func getUserInfo(for username: String) async throws -> User {
         let endpoint = baseURL + "\(username)"
         
         guard let url = URL(string: endpoint) else {
-            completed(.failure(.invalidUsername))
-            return
+            throw GFError.invalidUsername
         }
         
-        let task = URLSession.shared.dataTask(with: url) { data, response, error in
-            if let _ = error {
-                completed(.failure(.unableToComplete))
-            }
-            
-            guard let response = response as? HTTPURLResponse, response.statusCode == 200 else {
-                completed(.failure(.invalidResponse))
-                return
-            }
-            
-            guard let data = data else {
-                completed(.failure(.invalidData))
-                return
-            }
-            
-            do {
-                let decoder = JSONDecoder()
-                decoder.keyDecodingStrategy = .convertFromSnakeCase
-                decoder.dateDecodingStrategy = .iso8601
-                let user = try decoder.decode(User.self, from: data)
-                completed(.success(user))
-            } catch {
-                completed(.failure(.invalidData))
-            }
+        let (data, response) = try await URLSession.shared.data(from: url)
+        
+        guard let response = response as? HTTPURLResponse, response.statusCode == 200 else {
+            throw GFError.invalidResponse
         }
         
-        task.resume()
+        do {
+            return try decoder.decode(User.self, from: data)
+        } catch {
+            throw GFError.invalidData
+        }
     }
     
-    /// Downloads an image from the specified URL string and manages caching.
+    /// Downloads and caches an image from the specified URL string.
     ///
-    /// - Parameters:
-    ///   - urlString: The URL string of the image to download
-    ///   - completed: A closure called upon completion with the downloaded UIImage (or nil if download failed)
+    /// This method implements a two-level optimization:
+    /// 1. **Memory Cache**: First checks the in-memory cache (``NSCache``) for the image
+    /// 2. **Network Fetch**: Only downloads from network if not found in cache
     ///
-    /// This function first checks the cache for an existing image. If not found,
-    /// it downloads the image asynchronously. The completion handler is called in these cases:
-    /// 1. Immediately with cached image if available
-    /// 2. With the downloaded image if successful
-    /// 3. With nil if any error occurs during download or URL creation
-    func downloadImage(from urlString: String, completed: @escaping (UIImage?) -> Void) {
-        // Create cache key from the URL string
+    /// The cache uses the URL string as its key (converted to ``NSString``) and stores the decoded ``UIImage``.
+    /// Cached images will be automatically purged under memory pressure, following ``NSCache``'s eviction policy.
+    ///
+    /// ## Usage Example
+    /// ```swift
+    /// let image = await NetworkManager.shared.downloadImage(from: avatarURL)
+    /// avatarImageView.image = image
+    /// ```
+    ///
+    /// - Parameter urlString: The URL string of the image to download.
+    ///   - Must be a valid URL string that ``URL`` can initialize
+    ///   - Should typically be an HTTPS URL pointing to an image resource
+    /// - Returns: A ``UIImage`` if:
+    ///   - The image exists in cache, or
+    ///   - The download succeeds and the data can be converted to an image
+    /// - Returns `nil` if:
+    ///   - The URL string is invalid
+    ///   - The network request fails
+    ///   - The downloaded data isn't a valid image
+    func downloadImage(from urlString: String) async -> UIImage? {
         let cacheKey = NSString(string: urlString)
         
-        // Check cache for existing image
+        // Check cache first - return immediately if found
         if let image = cache.object(forKey: cacheKey) {
-            completed(image)
-            return
+            return image
         }
         
-        // Attempt to create URL from string
-        guard let url = URL(string: urlString) else {
-            return completed(nil)
-        }
+        // Validate URL before attempting download
+        guard let url = URL(string: urlString) else { return nil }
         
-        // Create data task for downloading image
-        let task = URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
-            // Handle all possible error cases first
-            guard error == nil,
-                  let response = response as? HTTPURLResponse, response.statusCode == 200,
-                  let data = data,
-                  let image = UIImage(data: data),
-                  let self = self else {
-                return DispatchQueue.main.async { completed(nil) }
-            }
+        do {
+            // Perform network request
+            let (data, _) = try await URLSession.shared.data(from: url)
             
-            // Store downloaded image in cache
-            self.cache.setObject(image, forKey: cacheKey)
+            // Convert data to UIImage
+            guard let image = UIImage(data: data) else { return nil }
             
-            // Update image on main thread
-            DispatchQueue.main.async {
-                completed(image)
-            }
+            // Cache the image before returning
+            cache.setObject(image, forKey: cacheKey)
+            return image
+        } catch {
+            // Silently fail (return nil) for all errors since this is often
+            // used for non-critical UI elements like avatars
+            return nil
         }
-        
-        // Start the download task
-        task.resume()
     }
 }
