@@ -13,6 +13,7 @@ A modern iOS application that allows users to search for GitHub users, view thei
 - 📱 Empty state handling
 - 🔍 Real-time search filtering
 - 🎯 Error handling and user feedback
+- ✅ Comprehensive unit testing
 
 ## Technical Highlights
 
@@ -21,12 +22,24 @@ A modern iOS application that allows users to search for GitHub users, view thei
 - Protocol-oriented programming
 - Dependency injection
 - Singleton pattern for network and persistence managers
+- Clear separation of business logic from UI components
+- Modular and maintainable code structure
+
+### Testing
+- Comprehensive unit tests for core functionality
+- Test-driven development approach for critical components
+- Asynchronous testing with XCTestExpectation
+- Proper test isolation and cleanup
+- Testing of both success and failure scenarios
+- Coverage of edge cases and error conditions
 
 ### Networking
 - Async/await for modern concurrency
 - Efficient image caching using NSCache
 - Error handling with custom error types
 - Pagination support for follower lists
+- Network request optimization
+- Proper error propagation and handling
 
 ### UI/UX
 - Custom UI components (buttons, labels, text fields)
@@ -34,12 +47,24 @@ A modern iOS application that allows users to search for GitHub users, view thei
 - Empty state handling
 - Loading states and error feedback
 - Modern iOS patterns and best practices
+- Accessibility support
+- Dark mode compatibility
 
 ### Data Management
 - Local persistence using UserDefaults
 - Efficient data caching
 - Memory management
 - State management
+- Data validation and sanitization
+- Proper data model design
+
+### Code Quality
+- SwiftLint integration for code style consistency
+- Comprehensive documentation
+- Clear naming conventions
+- SOLID principles adherence
+- Clean code practices
+- Performance optimization
 
 ## Screenshots
 ![Rotato Image 7A6E](https://github.com/user-attachments/assets/54add5fc-d174-41b0-87c1-13bba6c3e091)
