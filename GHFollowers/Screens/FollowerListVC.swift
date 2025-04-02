@@ -226,6 +226,7 @@ extension FollowerListVC: UISearchResultsUpdating {
             filteredFollowers.removeAll()
             updateData(on: followers)
             isSearching = false
+            setNeedsUpdateContentUnavailableConfiguration()
             return
         }
         
