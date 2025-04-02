@@ -49,6 +49,13 @@ class FollowerListVC: GFDataLoadingVC {
     }
     
     
+    /// Updates the content unavailable configuration based on the current state.
+    ///
+    /// This method configures the empty state UI that appears when:
+    /// - There are no followers to display
+    /// - A search returns no results
+    ///
+    /// - Parameter state: The current content unavailable configuration state
     override func updateContentUnavailableConfiguration(using state: UIContentUnavailableConfigurationState) {
         if followers.isEmpty && !isLoadingMoreFollowers {
             var config = UIContentUnavailableConfiguration.empty()
@@ -194,13 +201,24 @@ class FollowerListVC: GFDataLoadingVC {
 
 extension FollowerListVC: UICollectionViewDelegate {
     
+    /// Handles pagination when the user scrolls to the bottom of the followers list.
+    ///
+    /// This method detects when the user has scrolled to the bottom of the content and
+    /// automatically fetches the next page of followers if available.
+    ///
+    /// - Parameters:
+    ///   - scrollView: The scroll view that triggered the event
+    ///   - decelerate: Boolean indicating whether the scroll view will continue moving after the drag ends
     func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
         let offsetY = scrollView.contentOffset.y
         let contentHeight = scrollView.contentSize.height
         let height = scrollView.frame.height
         
-        if offsetY > contentHeight - height {
+        // Check if user has scrolled to the bottom of the content
+        let bottomThreshold: CGFloat = 100 // Buffer to start loading earlier
+        if offsetY > contentHeight - height - bottomThreshold {
             guard hasMoreFollowers, !isLoadingMoreFollowers else { return }
+            
             page += 1
             getFollowers(username: username, page: page)
         }
@@ -221,8 +239,15 @@ extension FollowerListVC: UICollectionViewDelegate {
 
 extension FollowerListVC: UISearchResultsUpdating {
     
+    /// Handles search filtering of the followers list.
+    ///
+    /// This method is called whenever the search text changes. It filters the followers
+    /// list based on the search text and updates the UI accordingly.
+    ///
+    /// - Parameter searchController: The search controller containing the search query
     func updateSearchResults(for searchController: UISearchController) {
         guard let filter = searchController.searchBar.text, !filter.isEmpty else {
+            // Reset search state when search text is empty
             filteredFollowers.removeAll()
             updateData(on: followers)
             isSearching = false
@@ -231,7 +256,15 @@ extension FollowerListVC: UISearchResultsUpdating {
         }
         
         isSearching = true
-        filteredFollowers = followers.filter { $0.login.lowercased().contains(filter.lowercased())}
+        
+        // Convert search text to lowercase once for performance
+        let lowercasedFilter = filter.lowercased()
+        
+        // Filter followers based on login containing the search text
+        filteredFollowers = followers.filter {
+            $0.login.lowercased().contains(lowercasedFilter)
+        }
+        
         updateData(on: filteredFollowers)
         setNeedsUpdateContentUnavailableConfiguration()
     }
