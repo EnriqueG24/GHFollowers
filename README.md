@@ -41,6 +41,9 @@ A modern iOS application that allows users to search for GitHub users, view thei
 - Memory management
 - State management
 
+## Screenshots
+![Rotato Image 7A6E](https://github.com/user-attachments/assets/54add5fc-d174-41b0-87c1-13bba6c3e091)
+
 ## Requirements
 
 - iOS 15.0+
