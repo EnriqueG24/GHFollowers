@@ -7,23 +7,59 @@
 
 import UIKit
 
+/// A view controller that displays a paginated grid of a GitHub user's followers.
+///
+/// This view controller handles:
+/// - Fetching and displaying followers with pagination
+/// - Searching/filtering followers
+/// - Adding users to favorites
+/// - Handling empty states and loading states
+/// - Navigation to user detail screens
+///
+/// The view uses a collection view with diffable data source for efficient updates
+/// and supports modern iOS patterns like content unavailable configurations.
 class FollowerListVC: GFDataLoadingVC {
     
+    // MARK: - Types
+    
+    /// Section identifiers for the collection view's diffable data source
     enum Section {
         case main
     }
     
+    // MARK: - Properties
+    
+    /// The GitHub username whose followers are being displayed
     var username: String!
-    var followers: [Follower] = []
-    var filteredFollowers: [Follower] = []
-    var page = 1
-    var hasMoreFollowers = true
-    var isSearching = false
-    var isLoadingMoreFollowers = false
     
-    var collectionView: UICollectionView!
-    var dataSource: UICollectionViewDiffableDataSource<Section, Follower>!
+    /// Complete list of followers fetched from the API
+    private var followers: [Follower] = []
     
+    /// Filtered subset of followers when search is active
+    private var filteredFollowers: [Follower] = []
+    
+    /// Current page number for pagination (starts at 1)
+    private var page = 1
+    
+    /// Flag indicating whether more followers are available to fetch
+    private var hasMoreFollowers = true
+    
+    /// Flag indicating whether a search is currently active
+    private var isSearching = false
+    
+    /// Flag indicating whether a pagination request is in progress
+    private var isLoadingMoreFollowers = false
+    
+    /// The collection view displaying the followers grid
+    private var collectionView: UICollectionView!
+    
+    /// Diffable data source for the followers collection view
+    private var dataSource: UICollectionViewDiffableDataSource<Section, Follower>!
+    
+    // MARK: - Initialization
+    
+    /// Creates a new follower list view controller for the specified username
+    /// - Parameter username: The GitHub username whose followers will be displayed
     init(username: String) {
         super.init(nibName: nil, bundle: nil)
         self.username = username
@@ -34,13 +70,15 @@ class FollowerListVC: GFDataLoadingVC {
         fatalError("init(coder:) has not been implemented")
     }
     
+    // MARK: - Lifecycle
+    
     override func viewDidLoad() {
         super.viewDidLoad()
+        configureViewController()
         configureCollectionView()
         configureSearchController()
-        configureViewController()
-        getFollowers(username: username, page: page)
         configureDataSource()
+        getFollowers(username: username, page: page)
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -48,6 +86,50 @@ class FollowerListVC: GFDataLoadingVC {
         navigationController?.setNavigationBarHidden(false, animated: true)
     }
     
+    // MARK: - UI Configuration
+    
+    /// Configures the base view controller properties and navigation bar
+    private func configureViewController() {
+        view.backgroundColor = .systemBackground
+        navigationController?.navigationBar.prefersLargeTitles = true
+        
+        let addButton = UIBarButtonItem(barButtonSystemItem: .add, target: self, action: #selector(addButtonTapped))
+        navigationItem.rightBarButtonItem = addButton
+    }
+    
+    /// Configures the collection view with a three-column layout optimized for follower avatars
+    ///
+    /// Sets up:
+    /// - Collection view layout
+    /// - Cell registration
+    /// - Delegate connections
+    private func configureCollectionView() {
+        collectionView = UICollectionView(frame: view.bounds, collectionViewLayout: UIHelper.createThreeColumnFlowLayout(in: view))
+        view.addSubview(collectionView)
+        collectionView.delegate = self
+        collectionView.backgroundColor = .systemBackground
+        collectionView.register(FollowerCell.self, forCellWithReuseIdentifier: FollowerCell.reuseID)
+    }
+    
+    /// Configures the search controller for filtering followers by username
+    private func configureSearchController() {
+        let searchController = UISearchController()
+        searchController.searchResultsUpdater = self
+        searchController.searchBar.placeholder = "Search followers..."
+        searchController.obscuresBackgroundDuringPresentation = false
+        navigationItem.searchController = searchController
+    }
+    
+    /// Configures the diffable data source for the collection view
+    ///
+    /// This sets up the cell provider that configures each follower cell with its data
+    private func configureDataSource() {
+        dataSource = UICollectionViewDiffableDataSource<Section, Follower>(collectionView: collectionView, cellProvider: { collectionView, indexPath, follower in
+            let cell = collectionView.dequeueReusableCell(withReuseIdentifier: FollowerCell.reuseID, for: indexPath) as! FollowerCell
+            cell.set(follower: follower)
+            return cell
+        })
+    }
     
     /// Updates the content unavailable configuration based on the current state.
     ///
@@ -70,35 +152,17 @@ class FollowerListVC: GFDataLoadingVC {
         }
     }
     
-    func configureViewController() {
-        view.backgroundColor = .systemBackground
-        navigationController?.navigationBar.prefersLargeTitles = true
-        
-        let addButton = UIBarButtonItem(barButtonSystemItem: .add, target: self, action: #selector(addButtonTapped))
-        navigationItem.rightBarButtonItem = addButton
-    }
-    
-    func configureCollectionView() {
-        collectionView = UICollectionView(frame: view.bounds, collectionViewLayout: UIHelper.createThreeColumnFlowLayout(in: view))
-        view.addSubview(collectionView)
-        collectionView.delegate = self
-        collectionView.backgroundColor = .systemBackground
-        collectionView.register(FollowerCell.self, forCellWithReuseIdentifier: FollowerCell.reuseID)
-    }
-    
-    func configureSearchController() {
-        let searchController = UISearchController()
-        searchController.searchResultsUpdater = self
-        searchController.searchBar.placeholder = "Search followers..."
-        searchController.obscuresBackgroundDuringPresentation = false
-        navigationItem.searchController = searchController
-    }
+    // MARK: - Data Loading
     
     /// Fetches followers for a specified username with pagination support
+    ///
     /// - Parameters:
     ///   - username: The GitHub username to fetch followers for
     ///   - page: The page number to fetch (pagination, starts at 1)
-    func getFollowers(username: String, page: Int) {
+    ///
+    /// - Note: Each page contains up to 100 followers. When fewer than 100 followers
+    ///         are returned, `hasMoreFollowers` is set to false.
+    private func getFollowers(username: String, page: Int) {
         showLoadingView()
         isLoadingMoreFollowers = true
         
@@ -121,7 +185,14 @@ class FollowerListVC: GFDataLoadingVC {
     }
     
     /// Processes followers data after a successful network request
+    ///
     /// - Parameter followers: Array of follower objects returned from the API
+    ///
+    /// This method:
+    /// - Updates the pagination state
+    /// - Appends new followers to the collection
+    /// - Updates empty state configuration
+    /// - Refreshes the UI with the updated data
     private func updateUI(with followers: [Follower]) {
         // Check if we've reached the end of available data
         if followers.count < 100 {
@@ -138,15 +209,13 @@ class FollowerListVC: GFDataLoadingVC {
         updateData(on: isSearching ? filteredFollowers : self.followers)
     }
     
-    func configureDataSource() {
-        dataSource = UICollectionViewDiffableDataSource<Section, Follower>(collectionView: collectionView, cellProvider: { collectionView, indexPath, follower in
-            let cell = collectionView.dequeueReusableCell(withReuseIdentifier: FollowerCell.reuseID, for: indexPath) as! FollowerCell
-            cell.set(follower: follower)
-            return cell
-        })
-    }
-    
-    func updateData(on followers: [Follower]) {
+    /// Updates the collection view with the provided follower data
+    ///
+    /// - Parameter followers: The array of followers to display
+    ///
+    /// This method applies a new snapshot to the diffable data source,
+    /// which automatically handles animating changes to the UI.
+    private func updateData(on followers: [Follower]) {
         var snapshot = NSDiffableDataSourceSnapshot<Section, Follower>()
         snapshot.appendSections([.main])
         snapshot.appendItems(followers)
@@ -156,9 +225,15 @@ class FollowerListVC: GFDataLoadingVC {
         }
     }
     
+    // MARK: - User Actions
+    
     /// Handles the action when the Add button is tapped
-    /// - Note: This function adds the current user to favorites by retrieving their information and storing it in the persistence layer
-    @objc func addButtonTapped() {
+    ///
+    /// This function adds the current user to favorites by:
+    /// 1. Fetching the user's full profile information
+    /// 2. Converting it to a Follower object for storage
+    /// 3. Storing it in the persistence layer
+    @objc private func addButtonTapped() {
         showLoadingView()
         
         Task {
@@ -178,7 +253,11 @@ class FollowerListVC: GFDataLoadingVC {
     }
     
     /// Adds a user to favorites using the PersistenceManager
+    ///
     /// - Parameter user: The user to be added to favorites
+    ///
+    /// This method converts the User object to a Follower object (for consistency in storage)
+    /// and saves it via the PersistenceManager, displaying appropriate feedback to the user.
     private func addUserToFavorites(_ user: User) {
         let favorite = Follower(login: user.login, avatarUrl: user.avatarUrl)
         
@@ -198,6 +277,8 @@ class FollowerListVC: GFDataLoadingVC {
         }
     }
 }
+
+// MARK: - UICollectionViewDelegate
 
 extension FollowerListVC: UICollectionViewDelegate {
     
@@ -224,6 +305,14 @@ extension FollowerListVC: UICollectionViewDelegate {
         }
     }
     
+    /// Handles selection of a follower cell
+    ///
+    /// When a follower is selected, this method presents a detail view controller
+    /// showing that user's information.
+    ///
+    /// - Parameters:
+    ///   - collectionView: The collection view containing the selected item
+    ///   - indexPath: The index path of the selected item
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         let activeArray = isSearching ? filteredFollowers : followers
         let follower = activeArray[indexPath.item]
@@ -236,6 +325,8 @@ extension FollowerListVC: UICollectionViewDelegate {
         present(navController, animated: true)
     }
 }
+
+// MARK: - UISearchResultsUpdating
 
 extension FollowerListVC: UISearchResultsUpdating {
     
@@ -270,7 +361,16 @@ extension FollowerListVC: UISearchResultsUpdating {
     }
 }
 
+// MARK: - UserInfoVCDelegate
+
 extension FollowerListVC: UserInfoVCDelegate {
+    
+    /// Handles requests to show followers for a different user
+    ///
+    /// This delegate method is called when the user navigates to a different user
+    /// from the user info screen and chooses to view that user's followers.
+    ///
+    /// - Parameter username: The username of the new user whose followers should be displayed
     func didRequestFollowers(for username: String) {
         self.username = username
         title = username
