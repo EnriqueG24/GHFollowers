@@ -9,11 +9,12 @@ import UIKit
 
 /// A view controller that displays and manages a list of favorite GitHub followers.
 ///
-/// This class provides functionality to:
-/// - Display a list of favorited GitHub users
-/// - Remove favorites via swipe-to-delete
-/// - Navigate to a follower's profile
-/// - Show an empty state when no favorites exist
+/// This view controller provides the following functionality:
+/// - Displays a list of favorited GitHub users in a table view
+/// - Supports removing favorites via swipe-to-delete gestures
+/// - Navigates to a follower's profile when a cell is selected
+/// - Shows an empty state view when no favorites exist
+/// - Persists changes using `PersistenceManager`
 ///
 /// ## Overview
 /// The `FavoritesListVC` integrates with `PersistenceManager` to persist favorites between app launches.
@@ -42,14 +43,41 @@ final class FavoritesListVC: GFDataLoadingVC {
         getFavorites()
     }
     
+    /// Updates the content unavailable configuration based on the current favorites state.
+    ///
+    /// This method automatically shows an empty state when the favorites array is empty,
+    /// and hides it when favorites exist. The empty state includes:
+    /// - A star icon (from SF Symbols)
+    /// - A primary text "No Favorites"
+    /// - Secondary instructional text
+    ///
+    /// - Parameter state: The current state of the content unavailable configuration.
+    ///
+    /// - Note: This overrides the parent class implementation to provide custom empty state styling.
+    /// - Important: Called automatically by the system when the favorites array changes.
+    ///   Trigger manually using `setNeedsUpdateContentUnavailableConfiguration()`.
+    override func updateContentUnavailableConfiguration(using state: UIContentUnavailableConfigurationState) {
+        if favorites.isEmpty {
+            var config = UIContentUnavailableConfiguration.empty()
+            config.image = .init(systemName: "star")
+            config.text = "No favorites"
+            config.secondaryText = "Add a favorite on the follower list screen"
+            contentUnavailableConfiguration = config
+        } else {
+            contentUnavailableConfiguration = nil
+        }
+    }
+    
     // MARK: - Configuration
+    
+    
     
     /// Configures the view controller's basic appearance and navigation properties.
     ///
-    /// Sets up:
-    /// - Background color
-    /// - Navigation title
-    /// - Large title preference
+    /// This method:
+    /// - Sets the background color to match the system background
+    /// - Configures the navigation title
+    /// - Enables large titles in the navigation bar
     func configureViewController() {
         view.backgroundColor = .systemBackground
         title = "Favorites"
@@ -60,9 +88,10 @@ final class FavoritesListVC: GFDataLoadingVC {
     ///
     /// This method:
     /// - Adds the table view to the view hierarchy
-    /// - Sets up auto-layout constraints
-    /// - Registers the cell class
-    /// - Configures row height and delegates
+    /// - Sets the table view to fill the available space
+    /// - Registers the `FavoriteCell` class for cell reuse
+    /// - Sets the row height to 80 points
+    /// - Assigns the delegate and data source
     func configureTableView() {
         view.addSubview(tableView)
         
@@ -78,12 +107,12 @@ final class FavoritesListVC: GFDataLoadingVC {
     
     /// Retrieves favorite followers from persistent storage and updates the UI.
     ///
-    /// This method:
-    /// - Fetches favorites using `PersistenceManager`
-    /// - Handles success/failure cases
-    /// - Updates UI on the main thread
-    ///
-    /// - Note: Shows an empty state view if no favorites exist, otherwise displays the favorites list.
+    /// This asynchronous method:
+    /// 1. Shows a loading view
+    /// 2. Attempts to retrieve favorites from `PersistenceManager`
+    /// 3. Updates the UI on the main thread:
+    ///    - On success: Displays the retrieved favorites
+    ///    - On failure: Shows an error alert
     func getFavorites() {
         showLoadingView()
         
@@ -106,24 +135,20 @@ final class FavoritesListVC: GFDataLoadingVC {
         }
     }
     
-    /// Processes retrieved favorites and updates the UI accordingly.
+    /// Updates the UI with the retrieved favorites.
     ///
-    /// - Parameter favorites: The array of favorite followers retrieved from persistence.
+    /// - Parameter favorites: The array of `Follower` objects to display.
     ///
-    /// If the favorites array is empty, shows an empty state view. Otherwise, updates
-    /// the table view with the retrieved favorites.
+    /// This method:
+    /// - Updates the local favorites array
+    /// - Triggers the empty state view update if needed
+    /// - Reloads the table view data on the main thread
     private func handleRetrievedFavorites(_ favorites: [Follower]) {
-        if favorites.isEmpty {
-            showEmptyStateView(
-                with: "No Favorites?\nAdd one on the follower screen.",
-                in: self.view
-            )
-        } else {
-            self.favorites = favorites
-            DispatchQueue.main.async {
-                self.tableView.reloadData()
-                self.view.bringSubviewToFront(self.tableView)
-            }
+        self.favorites = favorites
+        setNeedsUpdateContentUnavailableConfiguration()
+        DispatchQueue.main.async {
+            self.tableView.reloadData()
+            self.view.bringSubviewToFront(self.tableView)
         }
     }
 }
@@ -153,6 +178,9 @@ extension FavoritesListVC: UITableViewDelegate, UITableViewDataSource {
     }
     
     /// Handles swipe-to-delete functionality for favorites.
+    ///
+    /// - Important: This method persists the deletion using `PersistenceManager`.
+    /// - Note: Shows an error alert if the persistence operation fails.
     func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
         guard editingStyle == .delete else { return }
         
@@ -165,12 +193,7 @@ extension FavoritesListVC: UITableViewDelegate, UITableViewDataSource {
                 tableView.deleteRows(at: [indexPath], with: .left)
                 
                 // Show empty state if last item was deleted
-                if self.favorites.isEmpty {
-                    self.showEmptyStateView(
-                        with: "No Favorites?\nAdd one on the follower screen.",
-                        in: self.view
-                    )
-                }
+                setNeedsUpdateContentUnavailableConfiguration()
                 return
             }
             
