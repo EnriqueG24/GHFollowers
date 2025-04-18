@@ -70,8 +70,6 @@ final class FavoritesListVC: GFDataLoadingVC {
     
     // MARK: - Configuration
     
-    
-    
     /// Configures the view controller's basic appearance and navigation properties.
     ///
     /// This method:
